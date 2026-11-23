@@ -1,7 +1,7 @@
 # SynapSense
 
 Wrist-worn tonic–clonic seizure detection prototype on the Seeed XIAO nRF52840 Sense.
-Embedded Challenge, Fall 2026. **Educational prototype, not a medical device.**
+Embedded Challenge, Fall 2026. Team: Enes Sissenbi, Ivan Ni, Danish Puri. **Educational prototype.**
 
 ## What it does
 

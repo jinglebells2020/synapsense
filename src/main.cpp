@@ -1,5 +1,5 @@
 // SynapSense firmware: wrist-worn tonic-clonic seizure detection prototype.
-// Educational prototype, not a medical device.
+// Educational prototype.
 //
 //   IMU FIFO --INT1, 1/s--> drainImu() --> 30 s ring buffer (copied at each alert)
 //                                      \-> FeatureExtractor (4 s window, every 1 s)

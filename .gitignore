@@ -7,3 +7,5 @@ tools/replay
 recordings/raw/
 compile_commands.json
 .cache/
+submission/
+docs/ieee/synapsense_ieee.pdf
