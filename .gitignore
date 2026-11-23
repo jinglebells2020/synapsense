@@ -1,0 +1,9 @@
+.pio/
+.vscode/
+*.pyc
+__pycache__/
+tools/replay
+.DS_Store
+recordings/raw/
+compile_commands.json
+.cache/
