@@ -3,68 +3,62 @@
 namespace led {
 namespace {
 constexpr LedStep kBootSteps[] = {{GREEN, 100}, {OFF, 100}, {GREEN, 100}, {OFF, 100}, {GREEN, 100}, {OFF, 300}};
-constexpr LedStep kHbAdvSteps[] = {{BLUE, 15}, {OFF, 4985}};
-constexpr LedStep kHbConnSteps[] = {{GREEN, 15}, {OFF, 4985}};
-constexpr LedStep kHbEventSteps[] = {{RED, 30}, {OFF, 2970}};
-constexpr LedStep kPreSteps[] = {{AMBER, 250}, {OFF, 250}};
+constexpr LedStep kWaitingSteps[] = {{BLUE, 15}, {OFF, 4985}};
+constexpr LedStep kConnectedSteps[] = {{GREEN, 15}, {OFF, 4985}};
+constexpr LedStep kUnacknowledgedSteps[] = {{RED, 30}, {OFF, 2970}};
+constexpr LedStep kPreAlertSteps[] = {{AMBER, 250}, {OFF, 250}};
 constexpr LedStep kAlertSteps[] = {{RED, 100}, {OFF, 100}};
-constexpr LedStep kCancelSteps[] = {{GREEN, 1500}, {OFF, 200}};
-constexpr LedStep kRejectSteps[] = {{RED, 60}, {OFF, 60}, {RED, 60}, {OFF, 60}, {RED, 60}, {OFF, 300}};
+constexpr LedStep kCancelledSteps[] = {{GREEN, 1500}, {OFF, 200}};
+constexpr LedStep kRejectedSteps[] = {{RED, 60}, {OFF, 60}, {RED, 60}, {OFF, 60}, {RED, 60}, {OFF, 300}};
 constexpr LedStep kFaultSteps[] = {{PURPLE, 150}, {OFF, 150}, {PURPLE, 150}, {OFF, 1550}};
-constexpr LedStep kTestSteps[] = {{RED, 100}, {OFF, 100}, {BLUE, 100}, {OFF, 100}, {RED, 100}, {OFF, 100},
-                                 {BLUE, 100}, {OFF, 100}, {RED, 100}, {OFF, 300}};
+constexpr LedStep kTestSteps[] = {{RED, 100}, {OFF, 100}, {BLUE, 100}, {OFF, 100}, {RED, 100},
+                                 {OFF, 100},  {BLUE, 100}, {OFF, 100}, {RED, 100}, {OFF, 300}};
 
-SoftwareTimer timer;
-const LedPattern* base = nullptr;
-const LedPattern* current = nullptr;
-volatile uint8_t index = 0;
-
-void show(uint8_t c) {
-  // The XIAO RGB LED is active-low.
-  digitalWrite(LED_RED, (c & RED) ? LOW : HIGH);
-  digitalWrite(LED_GREEN, (c & GREEN) ? LOW : HIGH);
-  digitalWrite(LED_BLUE, (c & BLUE) ? LOW : HIGH);
+template <size_t N>
+constexpr LedPattern pattern(const LedStep (&steps)[N], bool loop) {
+  return {steps, uint8_t(N), loop};
 }
 
-void step() {
-  const LedPattern* p = current;
-  if (!p) {
+SoftwareTimer timer;
+const LedPattern* background = nullptr;
+const LedPattern* playing = nullptr;
+volatile uint8_t step_index = 0;
+
+void show(uint8_t color) {
+  // The XIAO's RGB LED is active-low.
+  digitalWrite(LED_RED, (color & RED) ? LOW : HIGH);
+  digitalWrite(LED_GREEN, (color & GREEN) ? LOW : HIGH);
+  digitalWrite(LED_BLUE, (color & BLUE) ? LOW : HIGH);
+}
+
+// Shows the next step and sets the timer for when it ends.
+void nextStep() {
+  if (playing && step_index >= playing->count) {
+    if (!playing->loop) playing = background;  // one-shot pattern finished
+    step_index = 0;
+  }
+  if (!playing) {
     show(OFF);
     return;
   }
-  if (index >= p->count) {
-    if (p->loop) {
-      index = 0;
-    } else {
-      current = base;
-      index = 0;
-      p = current;
-      if (!p) {
-        show(OFF);
-        return;
-      }
-    }
-  }
-  const LedStep& s = p->steps[index++];
-  show(s.color);
-  timer.setPeriod(s.ms);  // also (re)starts the one-shot timer
+  const LedStep& step = playing->steps[step_index++];
+  show(step.color);
+  timer.setPeriod(step.ms);  // also restarts the one-shot timer
 }
 
-void onTimer(TimerHandle_t) { step(); }
+void onTimer(TimerHandle_t) { nextStep(); }
 }  // namespace
 
-#define PATTERN(name, steps, loop) \
-  const LedPattern name = {steps, sizeof(steps) / sizeof(steps[0]), loop}
-PATTERN(kBoot, kBootSteps, false);
-PATTERN(kHeartbeatAdv, kHbAdvSteps, true);
-PATTERN(kHeartbeatConn, kHbConnSteps, true);
-PATTERN(kHeartbeatEvent, kHbEventSteps, true);
-PATTERN(kPreAlert, kPreSteps, true);
-PATTERN(kAlert, kAlertSteps, true);
-PATTERN(kCancelled, kCancelSteps, false);
-PATTERN(kRejected, kRejectSteps, false);
-PATTERN(kFault, kFaultSteps, true);
-PATTERN(kTest, kTestSteps, false);
+const LedPattern kBoot = pattern(kBootSteps, false);
+const LedPattern kWaitingForPhone = pattern(kWaitingSteps, true);
+const LedPattern kPhoneConnected = pattern(kConnectedSteps, true);
+const LedPattern kAlertUnacknowledged = pattern(kUnacknowledgedSteps, true);
+const LedPattern kPreAlert = pattern(kPreAlertSteps, true);
+const LedPattern kAlert = pattern(kAlertSteps, true);
+const LedPattern kCancelled = pattern(kCancelledSteps, false);
+const LedPattern kRejected = pattern(kRejectedSteps, false);
+const LedPattern kFault = pattern(kFaultSteps, true);
+const LedPattern kTest = pattern(kTestSteps, false);
 
 void begin() {
   pinMode(LED_RED, OUTPUT);
@@ -74,17 +68,17 @@ void begin() {
   timer.begin(100, onTimer, nullptr, false);
 }
 
-void setBase(const LedPattern& p) {
-  if (base == &p) return;
-  const bool was_on_base = current == base;
-  base = &p;
-  if (was_on_base) play(p);
+void setBackground(const LedPattern& p) {
+  if (background == &p) return;
+  const bool showing_background = playing == background;
+  background = &p;
+  if (showing_background) play(p);
 }
 
 void play(const LedPattern& p) {
   timer.stop();
-  current = &p;
-  index = 0;
-  step();
+  playing = &p;
+  step_index = 0;
+  nextStep();
 }
 }  // namespace led

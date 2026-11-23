@@ -1,6 +1,5 @@
-// On-board RGB LED patterns, driven by a FreeRTOS software timer.
-// The timer only wakes the CPU at pattern edges (a heartbeat costs ~0.4
-// wake-ups per second), so idle power stays low.
+// On-board RGB LED patterns. A FreeRTOS software timer fires only when the
+// pattern changes (a heartbeat blip costs ~0.4 wake-ups per second).
 #pragma once
 #include <Arduino.h>
 
@@ -18,12 +17,12 @@ struct LedPattern {
 };
 
 namespace led {
-extern const LedPattern kBoot, kHeartbeatAdv, kHeartbeatConn, kHeartbeatEvent, kPreAlert,
+extern const LedPattern kBoot, kWaitingForPhone, kPhoneConnected, kAlertUnacknowledged, kPreAlert,
     kAlert, kCancelled, kRejected, kFault, kTest;
 
 void begin();
-// Looping "background" pattern that one-shot patterns return to.
-void setBase(const LedPattern& p);
-// Plays a pattern now. One-shot patterns fall back to the base pattern.
+// The looping pattern shown when nothing else is playing.
+void setBackground(const LedPattern& p);
+// Plays a pattern now. A one-shot pattern returns to the background when done.
 void play(const LedPattern& p);
 }  // namespace led
