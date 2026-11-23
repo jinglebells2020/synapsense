@@ -15,12 +15,14 @@ phone over Bluetooth. Built on the Seeed XIAO nRF52840 Sense.
 | `2_one_pager/` | `SynapSense_OnePager.pdf` (IEEE style) and its LaTeX source |
 | `3_platformio_project/` | The PlatformIO project: firmware, detector library, tests, tools, a real wrist recording |
 | `firmware_build/` | Ready-to-flash firmware: `synapsense.uf2` (drag and drop), `firmware.zip` (DFU), `firmware.hex` |
+| `photos/` | The finished watch: on the wrist, side view with the USB-C port, and flat with the full strap |
+| `HOW_IT_WORKS.md` | Plain-language walkthrough of the code, with a glossary and likely questions |
 
 ## Where each deliverable is
 
 | # | Deliverable | Where |
 |---|---|---|
-| 1 | Wearable with 3D-printed enclosure and strap (10) | `1_enclosure/`. Print `out/*.stl`. Holds the XIAO and a 90 mAh LiPo. Lugs are 20 mm apart for **20 mm spring bars and a 19 mm strap** (the brief suggests 22 mm straps). |
+| 1 | Wearable with 3D-printed enclosure and strap (10) | Built and worn: see `photos/`. Design files in `1_enclosure/` (print `out/*.stl`). Holds the XIAO and a 90 mAh LiPo. Lugs are 20 mm apart for **20 mm spring bars and a 19 mm strap** (the brief suggests 22 mm straps). |
 | 2 | One-page PDF (15) | `2_one_pager/SynapSense_OnePager.pdf` |
 | 3 | PlatformIO project (5) | `3_platformio_project/platformio.ini`. Board `seeed-xiao-afruitnrf52-nrf52840-sense`, Arduino framework (Adafruit nRF52 core). |
 | 4 | Read the IMU and store the data window in real time (20) | `src/imu.cpp`: LSM6DS3TR-C driver; accel + gyro go into the sensor's FIFO at 52 Hz and a watermark interrupt fires once per second. `src/main.cpp` `drainImu()`: burst-reads the FIFO into a 30 s ring buffer (`lib/detector/sample_ring.h`), frozen as a snapshot at every alert (serial `dump`). |
@@ -37,7 +39,8 @@ All paths in rows 3–7 are inside `3_platformio_project/`.
 - **Hardware double-tap:** the IMU's own tap engine detects the cancel gesture (accel runs at 416 Hz inside the
   sensor; only 52 Hz goes into the FIFO).
 - **Low-power settings:** gyro in normal (not high-performance) mode; microphone unpowered.
-- **Cheap FFT:** two real axes share one complex FFT, so three axes cost two FFTs.
+- **Processing once a second:** features (including the FFT) are computed once per second over the last 4 s,
+  not on every sample.
 - **Timers, not polling:** LED patterns run on a FreeRTOS software timer that fires only when the pattern changes.
   The battery is read once a minute.
 - **Bluetooth:** advertising runs every 100 ms for 30 s, then about once a second. Alerts missed while

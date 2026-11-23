@@ -13,7 +13,6 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
@@ -37,10 +36,9 @@ for line in out.splitlines():
         gyro.append(int(m[2]))
         state.append(m[3])
 
-# The case render, cropped to its content.
-img = plt.imread(os.path.join(ROOT, "docs", "onepager", "fig_case.png"))[:, :, :3]
-ink = np.where(img.mean(axis=2) < 0.97)
-img = img[ink[0].min():ink[0].max() + 1, ink[1].min():ink[1].max() + 1]
+# Photo of the watch on the wrist, cropped to a square around the case (pixel box in the 1500x2000 photo).
+img = plt.imread(os.path.join(ROOT, "docs", "photos", "watch_on_wrist.jpg"))
+img = img[640:1320, 400:1080]
 
 fig, (left, right) = plt.subplots(1, 2, figsize=(COLUMN_IN, 1.12), gridspec_kw={"width_ratios": [0.8, 2.6]})
 left.imshow(img)

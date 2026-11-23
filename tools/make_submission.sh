@@ -41,6 +41,8 @@ cp .pio/build/xiao/firmware.zip .pio/build/xiao/firmware.hex "$OUT/firmware_buil
 python3 "$UF2CONV" .pio/build/xiao/firmware.hex -c -f 0xADA52840 -o "$OUT/firmware_build/synapsense.uf2" >/dev/null
 
 cp docs/SUBMISSION.md "$OUT/README.md"
+cp docs/HOW_IT_WORKS.md "$OUT/HOW_IT_WORKS.md"
+cp -R docs/photos "$OUT/photos"
 echo "Built $(date '+%Y-%m-%d %H:%M') from commit $(git rev-parse --short HEAD)$(git diff --quiet HEAD -- . ':!submission' || echo ' (plus uncommitted changes)')." \
   > "$OUT/firmware_build/BUILD_INFO.txt"
 

@@ -40,8 +40,8 @@ convulsion, or diagnose epilepsy.
 The XIAO nRF52840 Sense (nRF52840 MCU, LSM6DS3TR-C IMU) and a 90\,mAh LiPo sit in a 3D-printed case with 20\,mm
 spring-bar lugs for a 19\,mm strap (Fig.~\ref{fig:main}a); firmware is Arduino on PlatformIO. The IMU's FIFO buffers accelerometer ($\pm$8\,g) and gyroscope ($\pm$2000\,\dps) samples at 52\,Hz and
 interrupts once per second, so the MCU sleeps (FreeRTOS tickless idle) between batches. The last 30\,s of raw data
-stay in a RAM ring buffer, saved as a snapshot at every alert. To save power, two axes share one FFT, the gyro runs
-in normal mode, the microphone is off, and BLE advertising slows after 30\,s.
+stay in a RAM ring buffer, saved as a snapshot at every alert. To save power, the FFT runs once per second, the
+gyro runs in normal mode, the microphone is off, and BLE advertising slows after 30\,s.
 
 \section{Detection Algorithm}
 After a 0.5-Hz high-pass filter, each 4-s window (recomputed every second; 256-point FFT, three axes' spectra
@@ -65,8 +65,8 @@ where $n$ is the candidate count and $\bar\rho$ their mean rhythm. Updates follo
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{fig_device_recording.pdf}
-\caption{(a) Printed case, 34$\times$25$\times$20.5\,mm. (b) Real wrist recording replayed through the detector;
-light and dark shading mark pre-alert and alert.}
+\caption{(a) The prototype on the wrist (printed case 34$\times$25$\times$20.5\,mm, 19-mm strap); the LED shows
+through the lid. (b) Real wrist recording replayed through the detector; light and dark shading: pre-alert and alert.}
 \label{fig:main}
 \end{figure}
 \emph{Several features at once:} walking and running arm swing (1--1.5\,Hz) fails the band test, tooth brushing and
