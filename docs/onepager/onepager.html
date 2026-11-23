@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SynapSense - one-page summary</title>
+<style>
+  @page { size: Letter; margin: 0.42in 0.45in 0.38in; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; font: 8.3pt/1.32 "Helvetica Neue", Helvetica, Arial, sans-serif; color: #1d232b; }
+  .accent { color: #2f5f8f; }
+  header { display: flex; align-items: center; gap: 14px; border-bottom: 1.5pt solid #2f5f8f; padding-bottom: 6px; margin-bottom: 8px; }
+  header .t { flex: 1; }
+  h1 { font-size: 21pt; margin: 0; letter-spacing: -0.3px; line-height: 1.05; }
+  h1 span { font-weight: 400; color: #2f5f8f; }
+  .sub { font-size: 10pt; margin: 2px 0 3px; }
+  .meta { font-size: 7.4pt; color: #5b6570; }
+  .warn { display: inline-block; margin-top: 3px; font-size: 7.2pt; font-weight: 600; color: #8a2a2a;
+          border: 0.75pt solid #c98585; background: #fbefef; border-radius: 3px; padding: 1px 6px; }
+  header img { height: 1.02in; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+  h2 { font-size: 10pt; margin: 8px 0 3px; color: #2f5f8f; text-transform: uppercase; letter-spacing: 0.4px; }
+  h2:first-child { margin-top: 0; }
+  p { margin: 0 0 4px; }
+  ol, ul { margin: 0 0 4px; padding-left: 14px; }
+  li { margin-bottom: 2.5px; }
+  b { font-weight: 650; }
+  .flow { display: flex; align-items: center; gap: 3px; margin: 3px 0 5px; font-size: 6.9pt; text-align: center; }
+  .flow div { border: 0.75pt solid #2f5f8f; border-radius: 3px; background: #eef3f9; padding: 2px 3px; line-height: 1.15; flex: 1; }
+  .flow i { font-style: normal; color: #2f5f8f; font-weight: 700; }
+  .rule { background: #f4f6f8; border-left: 2pt solid #2f5f8f; padding: 3px 6px; margin: 3px 0 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 7.7pt; margin: 2px 0 4px; }
+  td { padding: 1.4px 4px; border-bottom: 0.5pt solid #dde2e8; vertical-align: top; }
+  td:first-child { white-space: nowrap; font-weight: 600; width: 34%; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: -0.5px; }
+  figure { margin: 2px 0 2px; }
+  figure img { width: 100%; display: block; }
+  figcaption { font-size: 7.3pt; color: #3d4650; margin-top: 2px; }
+  code { font: 7.2pt Menlo, monospace; background: #eef1f4; padding: 0 2px; border-radius: 2px; }
+  footer { margin-top: 6px; border-top: 0.75pt solid #c5ccd4; padding-top: 3px; font-size: 6.9pt; color: #5b6570; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+<header>
+  <div class="t">
+    <h1>SynapSense <span>wrist seizure alert</span></h1>
+    <div class="sub">A watch that spots the rhythmic jerking of a <b>tonic–clonic seizure</b> and alerts a paired phone.</div>
+    <div class="meta">Embedded Challenge, Fall 2026 · Seeed XIAO nRF52840 Sense · Arduino (Adafruit nRF52) on PlatformIO</div>
+    <div class="warn">Educational prototype. Not a medical device. Do not rely on it for anyone's safety.</div>
+  </div>
+  <img src="fig_case.png" alt="3D-printed SynapSense case">
+</header>
+
+<div class="cols">
+<div>
+  <h2>What it detects</h2>
+  <p>The <b>convulsive (clonic) phase</b> of generalized and focal-to-bilateral <b>tonic–clonic seizures</b>:
+  strong, regular jerking of the arm at <b>2–8 Hz</b>, with wrist rotation, lasting about <b>8 s or more</b>.
+  These seizures make the clearest wrist movement, so they are the first target.</p>
+  <p>It does <b>not</b> detect absence, focal-aware, atonic or other low-motion seizures. It gives no warning
+  before the convulsion starts. It measures wrist motion only, not brain activity, and cannot diagnose epilepsy.</p>
+
+  <h2>How it works</h2>
+  <div class="flow">
+    <div>IMU FIFO<br>52 Hz</div><i>→</i><div>4 s window<br>every 1 s</div><i>→</i><div>features<br>(FFT)</div><i>→</i>
+    <div>rules</div><i>→</i><div>alert state<br>machine</div><i>→</i><div>LED +<br>Bluetooth</div>
+  </div>
+  <ol>
+    <li><b>Sense.</b> The LSM6DS3TR-C accelerometer (±8 g) and gyroscope (±2000 °/s) fill the sensor's own FIFO
+    at 52 Hz. Once a second its watermark interrupt wakes the nRF52840, which reads the batch and sleeps again.
+    The last <b>30 s of raw data</b> stay in a RAM ring buffer and are saved as a snapshot at every alert.</li>
+    <li><b>Features.</b> Every second, over the last 4 s (gravity and gyro drift removed with a 0.5 Hz high-pass):
+    RMS motion, newest-second RMS, peak-to-peak, jerk, and a 256-point FFT giving the <b>dominant frequency</b>
+    and <b>rhythm</b> (share of power at the peak and its 2nd harmonic), for both accelerometer and gyroscope.</li>
+    <li><b>Candidate window</b> when all of these hold:
+      <div class="rule">accel RMS ≥ 0.3 g · gyro RMS ≥ 100 °/s (also in the newest second) ·
+      dominant frequency 2–8 Hz in <i>both</i> sensors · rhythm ≥ 0.3 in both</div></li>
+    <li><b>Confirm and alert.</b> 8 of the last 10 windows → <b>PRE-ALERT</b>. No cancel within 10 s →
+    <b>ALERT</b>, with confidence = 60% persistence + 40% rhythm quality. Updates every 30 s; <b>ENDED</b>
+    after 15 s without rhythm (looser "hold" thresholds), then a 60 s cooldown: one seizure, one alert.</li>
+  </ol>
+
+  <h2>Keeping false alarms down</h2>
+  <ul>
+    <li><b>Several features at once.</b> Walking and running arm swing (about 1–1.5 Hz) fail the frequency test.
+    Tooth brushing and clapping fail the rotation or rhythm test. Short bursts like waving fail the 8-of-10 and
+    newest-second tests.</li>
+    <li><b>Two-stage alert.</b> The wearer can cancel a false pre-alert by double-tapping the watch (the IMU's own
+    tap engine). A tap only counts during the pre-alert and while the wrist is steady, because clonic jerks can
+    look like taps, and a seizure must never cancel its own alert. <b>No response means the alert is sent.</b></li>
+    <li><b>Faults are kept apart.</b> Sensor missing or stalled (auto-restart), FIFO overrun, clipping and low
+    battery are reported on the Status channel, never as seizure alerts.</li>
+  </ul>
+
+  <h2>Efficient by design</h2>
+  <p>The CPU sleeps between once-a-second FIFO interrupts (FreeRTOS tickless idle). The gyro runs in normal (not
+  high-performance) mode and the microphone is unpowered. LED patterns run on a software timer that only wakes at pattern edges.
+  Bluetooth advertises every 100 ms for 30 s, then about once a second. The battery is read once a minute.</p>
+
+</div>
+
+<div>
+  <h2>Using it</h2>
+  <ul>
+    <li><b>Wear</b> it snug on the wrist with a 19 mm strap (20 mm spring bars). A loose watch adds noise.</li>
+    <li><b>Charge</b> through USB-C (remove the plug cover): 90 mAh LiPo, about 2 h; the small charge LED lights while charging.</li>
+    <li><b>Phone:</b> in nRF Connect, connect to <b>SynapSense</b>, open service <code>7A3E0001-…</code> and subscribe
+    to <b>Alert</b> and <b>Status</b> (show as text). Write <code>test</code>, <code>cancel</code>, <code>ack</code> or
+    <code>status</code> to <b>Command</b>. <code>test</code> sends a test alert to check the link.</li>
+    <li><b>Amber blinking but you are fine?</b> Hold your wrist still, then double-tap the watch.</li>
+    <li><b>After an alert,</b> check on the wearer. The red blip stays until it is acknowledged (double-tap or <code>ack</code>).</li>
+  </ul>
+  <table>
+    <tr><td><span class="dot" style="background:#3aa35b"></span>3 green blinks</td><td>started OK</td></tr>
+    <tr><td><span class="dot" style="background:#3b78d8"></span>blue blip every 5 s</td><td>on, no phone connected</td></tr>
+    <tr><td><span class="dot" style="background:#3aa35b"></span>green blip every 5 s</td><td>on, phone connected</td></tr>
+    <tr><td><span class="dot" style="background:#f2a516"></span>amber blinking</td><td>pre-alert: hold still, double-tap to cancel</td></tr>
+    <tr><td><span class="dot" style="background:#e03b3b"></span>fast red blinking</td><td>ALERT sent to the phone</td></tr>
+    <tr><td><span class="dot" style="background:#e03b3b"></span>red blip every 3 s</td><td>alert not acknowledged yet</td></tr>
+    <tr><td><span class="dot" style="background:#3aa35b"></span>long green</td><td>cancelled / acknowledged</td></tr>
+    <tr><td><span class="dot" style="background:#e03b3b"></span>3 quick red</td><td>cancel ignored: wrist still moving</td></tr>
+    <tr><td><span class="dot" style="background:#9b3fc4"></span>purple double blink</td><td>sensor fault</td></tr>
+  </table>
+
+  <h2>Tested</h2>
+  <figure>
+    <img src="fig_recording.png" alt="Real wrist recording replayed through the detector">
+    <figcaption>Real wrist recording run through the firmware's detector (the board and the Mac replay give the
+    same events). 3.5 min of wearing and handling: no candidate windows. A 48 s forearm shake (4–6 Hz): pre-alert
+    after 8 s, alert after 18 s, one alert, then "ended, lasted 48 s". 18 unit tests with synthetic seizures,
+    walking, running, tooth brushing, clapping and waving also pass.</figcaption>
+  </figure>
+
+  <h2>Limits</h2>
+  <p>Thresholds were set from synthetic data and simulated shaking, not real seizures; clinical recordings are
+  needed to tune them. Vigorous rhythmic activity (e.g. shaking a bottle) can cause a pre-alert. Only a phone
+  connected in nRF Connect sees alerts: no caregiver SMS, no emergency calls.</p>
+</div>
+</div>
+
+<footer>
+  <span>XIAO nRF52840 Sense · 90 mAh LiPo · printed case 34 × 25 × 20.5 mm</span>
+  <span>Source: <code>src/</code> · <code>lib/detector/</code> · <code>test/</code> · <code>enclosure/</code></span>
+</footer>
+</body>
+</html>
