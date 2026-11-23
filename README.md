@@ -25,7 +25,7 @@ by vigorous rhythmic activity (that is what the pre-alert cancel is for).
 |---|---|
 | IMU sampled at 52 Hz into the sensor's own FIFO; INT1 wakes the CPU once a second; CPU sleeps in between | `src/imu.cpp` |
 | Last 30 s of raw samples kept in a RAM ring buffer; frozen into a snapshot at each alert | `src/main.cpp` |
-| Every 1 s, over the last 4 s: RMS, peak-to-peak, jerk, dominant frequency and rhythm (FFT) for accel and gyro | `lib/detector/features.cpp` |
+| Every 1 s, over the last 4 s: RMS, dominant frequency and rhythm (FFT) for accel and gyro | `lib/detector/features.cpp` |
 | Candidate = strong + rhythmic 2–8 Hz in both accel and gyro, and still moving in the newest second | `lib/detector/detector.cpp` |
 | Confirm: 8 of the last 10 windows → pre-alert → alert → end → cooldown | `lib/detector/detector.cpp` |
 | BLE GATT service with text notifications + Battery Service | `src/ble_link.cpp` |

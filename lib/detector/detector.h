@@ -82,7 +82,7 @@ class Detector {
   uint8_t confidence() const;      // 0..100
 
  private:
-  static constexpr int kMaxWindows = 32;  // bits in candidates_
+  static constexpr int kMaxWindows = 32;  // longest history we keep
 
   DetEvent makeEvent(EventType type, uint32_t now_ms, uint8_t confidence) const;
   void enterCooldown(uint32_t now_ms);
@@ -90,7 +90,8 @@ class Detector {
 
   DetectorConfig cfg_;
   DetState state_ = DetState::Idle;
-  uint32_t candidates_ = 0;           // bit i = the window i seconds ago was a candidate
+  // History, newest first: [0] = this second, [1] = one second ago, ...
+  bool was_candidate_[kMaxWindows] = {false};
   float quality_[kMaxWindows] = {0};  // that window's rhythm, 0 if not a candidate
   bool ongoing_ = false;              // newest window passed isOngoing()
   bool steady_ = true;                // newest window was calm enough to trust a tap

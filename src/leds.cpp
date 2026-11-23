@@ -14,11 +14,6 @@ constexpr LedStep kFaultSteps[] = {{PURPLE, 150}, {OFF, 150}, {PURPLE, 150}, {OF
 constexpr LedStep kTestSteps[] = {{RED, 100}, {OFF, 100}, {BLUE, 100}, {OFF, 100}, {RED, 100},
                                  {OFF, 100},  {BLUE, 100}, {OFF, 100}, {RED, 100}, {OFF, 300}};
 
-template <size_t N>
-constexpr LedPattern pattern(const LedStep (&steps)[N], bool loop) {
-  return {steps, uint8_t(N), loop};
-}
-
 SoftwareTimer timer;
 const LedPattern* background = nullptr;
 const LedPattern* playing = nullptr;
@@ -49,16 +44,18 @@ void nextStep() {
 void onTimer(TimerHandle_t) { nextStep(); }
 }  // namespace
 
-const LedPattern kBoot = pattern(kBootSteps, false);
-const LedPattern kWaitingForPhone = pattern(kWaitingSteps, true);
-const LedPattern kPhoneConnected = pattern(kConnectedSteps, true);
-const LedPattern kAlertUnacknowledged = pattern(kUnacknowledgedSteps, true);
-const LedPattern kPreAlert = pattern(kPreAlertSteps, true);
-const LedPattern kAlert = pattern(kAlertSteps, true);
-const LedPattern kCancelled = pattern(kCancelledSteps, false);
-const LedPattern kRejected = pattern(kRejectedSteps, false);
-const LedPattern kFault = pattern(kFaultSteps, true);
-const LedPattern kTest = pattern(kTestSteps, false);
+// {steps, how many steps, loop forever?}
+#define COUNT(steps) uint8_t(sizeof(steps) / sizeof(steps[0]))
+const LedPattern kBoot = {kBootSteps, COUNT(kBootSteps), false};
+const LedPattern kWaitingForPhone = {kWaitingSteps, COUNT(kWaitingSteps), true};
+const LedPattern kPhoneConnected = {kConnectedSteps, COUNT(kConnectedSteps), true};
+const LedPattern kAlertUnacknowledged = {kUnacknowledgedSteps, COUNT(kUnacknowledgedSteps), true};
+const LedPattern kPreAlert = {kPreAlertSteps, COUNT(kPreAlertSteps), true};
+const LedPattern kAlert = {kAlertSteps, COUNT(kAlertSteps), true};
+const LedPattern kCancelled = {kCancelledSteps, COUNT(kCancelledSteps), false};
+const LedPattern kRejected = {kRejectedSteps, COUNT(kRejectedSteps), false};
+const LedPattern kFault = {kFaultSteps, COUNT(kFaultSteps), true};
+const LedPattern kTest = {kTestSteps, COUNT(kTestSteps), false};
 
 void begin() {
   pinMode(LED_RED, OUTPUT);

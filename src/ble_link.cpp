@@ -25,8 +25,9 @@ volatile Command pending = Command::None;
 volatile bool alert_missed = false;  // an alert went out while no phone was listening
 
 void onCommand(uint16_t, BLECharacteristic*, uint8_t* data, uint16_t len) {
-  char text[24] = {0};  // data is not NUL-terminated
-  memcpy(text, data, min<uint16_t>(len, sizeof(text) - 1));
+  char text[24] = {0};  // data has no 0 at the end, so copy it into a 0-filled buffer
+  if (len > sizeof(text) - 1) len = sizeof(text) - 1;
+  memcpy(text, data, len);
   const Command c = parseCommand(text);
   if (c == Command::None) return;
   pending = c;

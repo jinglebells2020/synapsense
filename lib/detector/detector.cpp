@@ -1,7 +1,5 @@
 #include "detector.h"
 
-#include <string.h>
-
 namespace {
 bool inBand(float hz, float lo, float hi) { return hz >= lo && hz <= hi; }
 float clamp01(float v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
@@ -77,8 +75,10 @@ Activity Detector::classify(const Features& f) const {
 }
 
 uint8_t Detector::candidateCount() const {
-  const uint32_t recent = cfg_.confirm_windows >= 32 ? 0xFFFFFFFFu : (1u << cfg_.confirm_windows) - 1;
-  return __builtin_popcount(candidates_ & recent);
+  uint8_t count = 0;
+  for (int age = 0; age < cfg_.confirm_windows; age++)
+    if (was_candidate_[age]) count++;
+  return count;
 }
 
 // 60% persistence (share of recent windows that were candidates)
@@ -87,7 +87,7 @@ uint8_t Detector::confidence() const {
   float quality_sum = 0;
   int count = 0;
   for (int age = 0; age < cfg_.confirm_windows; age++) {
-    if (candidates_ & (1u << age)) {
+    if (was_candidate_[age]) {
       quality_sum += quality_[age];
       count++;
     }
@@ -112,8 +112,10 @@ void Detector::enterCooldown(uint32_t now_ms) {
 }
 
 void Detector::clearHistory() {
-  candidates_ = 0;
-  memset(quality_, 0, sizeof(quality_));
+  for (int age = 0; age < kMaxWindows; age++) {
+    was_candidate_[age] = false;
+    quality_[age] = 0;
+  }
   onset_ms_ = 0;
 }
 
@@ -123,9 +125,12 @@ DetEvent Detector::update(const Features& f, uint32_t now_ms) {
   // A tap is only trusted when the wrist shows no rhythm and no strong rotation.
   steady_ = !ongoing_ && f.gyr_rms < cfg_.gyr_rms_min * cfg_.ongoing_scale;
 
-  // Shift the history by one window.
-  candidates_ = (candidates_ << 1) | (candidate ? 1u : 0u);
-  memmove(&quality_[1], &quality_[0], sizeof(float) * (kMaxWindows - 1));
+  // Move the history back by one second; the newest window goes in front.
+  for (int age = kMaxWindows - 1; age > 0; age--) {
+    was_candidate_[age] = was_candidate_[age - 1];
+    quality_[age] = quality_[age - 1];
+  }
+  was_candidate_[0] = candidate;
   quality_[0] = candidate ? 0.5f * (f.acc_rhythm + f.gyr_rhythm) : 0;
   if (candidate) rhythm_hz_ = f.gyr_dom_hz;
 
@@ -135,7 +140,7 @@ DetEvent Detector::update(const Features& f, uint32_t now_ms) {
       // The motion began at the oldest candidate window in the confirm span.
       int oldest = 0;
       for (int age = 0; age < cfg_.confirm_windows; age++)
-        if (candidates_ & (1u << age)) oldest = age;
+        if (was_candidate_[age]) oldest = age;
       onset_ms_ = now_ms - uint32_t(oldest) * 1000;
       state_ = DetState::PreAlert;
       state_start_ms_ = now_ms;
