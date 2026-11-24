@@ -5,43 +5,44 @@
 \usepackage{newtxtext,newtxmath}  % Times, as in IEEE templates
 \usepackage{amsmath}
 \usepackage{graphicx}
+\usepackage{xcolor}
 \usepackage{url}
 \usepackage{cite}
 
 \newcommand{\dps}{$^\circ$/s}
+\setlength{\floatsep}{6pt plus 2pt minus 2pt}
+\setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
 
 \begin{document}
+% tighter space around the two equations
+\setlength{\abovedisplayskip}{3pt plus 1pt}\setlength{\belowdisplayskip}{3pt plus 1pt}
 
 \title{SynapSense: A Wrist-Worn Seizure Alert}
 
 \author{\IEEEauthorblockN{Enes Sissenbi, Ivan Ni, Danish Puri}
 \IEEEauthorblockA{Embedded Challenge, Fall 2026 \quad\textit{Educational prototype}}}
 
+\IEEEaftertitletext{\vspace{-1.5\baselineskip}}
 \maketitle
 
 \begin{abstract}
 SynapSense is a wrist-worn prototype that detects the convulsive phase of tonic--clonic seizures and alerts a paired
-phone over Bluetooth Low Energy (BLE). IMU motion features feed a rule-based classifier and an alert state machine;
-on a wrist recording it stayed quiet during everyday handling and alerted 18\,s into a simulated convulsion.
+phone over Bluetooth Low Energy (BLE). Its rule-based IMU classifier stayed quiet in everyday wear and alerted
+18\,s into a simulated convulsion.
 \end{abstract}
 
-\begin{IEEEkeywords}
-seizure detection, wearable, IMU, BLE
-\end{IEEEkeywords}
-
 \section{What It Detects}
-Tonic--clonic seizures cause sustained, rhythmic limb jerking, the pattern a wrist sensor sees best~\cite{cdc,ef,ilae},
-and wrist motion sensing has the strongest evidence among noninvasive detectors of convulsive seizures~\cite{aes,meta}.
-SynapSense targets that clonic phase: \emph{strong, regular 2--8\,Hz arm jerking with wrist rotation, lasting about
-8\,s or more}. It does not detect absence, focal-aware, atonic or other low-motion seizures, warn before the
-convulsion, or diagnose epilepsy.
+Tonic--clonic seizures cause sustained, rhythmic limb jerking~\cite{cdc,ef,ilae}, and wrist motion sensing is the
+best-supported noninvasive way to detect them~\cite{aes,meta}. SynapSense targets that clonic
+phase: \emph{strong, regular 2--8\,Hz arm jerking with wrist rotation, for about 8\,s or more}. It does not detect absence, focal-aware, atonic or other low-motion seizures, warn before the
+convulsion or diagnose epilepsy.
 
 \section{System Design}
-The XIAO nRF52840 Sense (nRF52840 MCU, LSM6DS3TR-C IMU) and a 90\,mAh LiPo sit in a 3D-printed case with 20\,mm
-spring-bar lugs for a 19\,mm strap (Fig.~\ref{fig:main}a); firmware is Arduino on PlatformIO. The IMU's FIFO buffers accelerometer ($\pm$8\,g) and gyroscope ($\pm$2000\,\dps) samples at 52\,Hz and
-interrupts once per second, so the MCU sleeps (FreeRTOS tickless idle) between batches. The last 30\,s of raw data
-stay in a RAM ring buffer, saved as a snapshot at every alert. To save power, the FFT runs once per second, the
-gyro runs in normal mode, the microphone is off, and BLE advertising slows after 30\,s.
+The XIAO nRF52840 Sense (LSM6DS3TR-C IMU) and a 90\,mAh LiPo sit in a 3D-printed case on a 19\,mm strap
+(Fig.~\ref{fig:main}a--b); firmware is Arduino on PlatformIO. The IMU's FIFO buffers accelerometer ($\pm$8\,g) and
+gyroscope ($\pm$2000\,\dps) samples at 52\,Hz and interrupts once a second; the MCU sleeps (FreeRTOS tickless
+idle) in between. A RAM ring buffer holds the last 30\,s of raw data, frozen as a snapshot at every alert.
+Power savers: FFT once a second, gyro in normal mode, microphone off, slower BLE advertising after 30\,s.
 
 \section{Detection Algorithm}
 After a 0.5-Hz high-pass filter, each 4-s window (recomputed every second; 256-point FFT, three axes' spectra
@@ -64,9 +65,13 @@ where $n$ is the candidate count and $\bar\rho$ their mean rhythm. Updates follo
 \section{Avoiding False Alarms}
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{fig_device_recording.pdf}
-\caption{(a) The prototype on the wrist (printed case 34$\times$25$\times$20.5\,mm, 19-mm strap); the LED shows
-through the lid. (b) Real wrist recording replayed through the detector; light and dark shading: pre-alert and alert.}
+\setlength{\fboxsep}{1pt}
+\newcommand{\photo}[2]{\includegraphics[width=0.493\columnwidth]{#1}%
+  \llap{\makebox[0.493\columnwidth][l]{\hspace{3pt}\raisebox{3pt}{\colorbox{white}{\footnotesize #2}}}}}
+\photo{photo_top.jpg}{(a)}\hfill\photo{photo_side.jpg}{(b)}\\[3pt]
+\includegraphics[width=\columnwidth]{fig_recording.pdf}
+\caption{(a) Top and (b) side view (34$\times$25$\times$20.5\,mm case, USB-C port on the side). (c) Wrist
+recording replayed through the detector; shading: pre-alert, then alert.}
 \label{fig:main}
 \end{figure}
 \emph{Several features at once:} walking and running arm swing (1--1.5\,Hz) fails the band test, tooth brushing and
@@ -101,19 +106,18 @@ Purple double blink & sensor fault\\
 \end{table}
 
 \section{Evaluation and Limits}
-A real wrist recording replayed through the firmware's detector on a PC gives the same events as the board
-(Fig.~\ref{fig:main}b): 3.5\,min of wearing and handling produced no candidate windows, and a 48-s forearm shake at
-4--6\,Hz raised a pre-alert after 8\,s and one alert (confidence 94\%) after 18\,s. Eighteen unit tests with
-synthetic seizures and everyday motions pass. Thresholds come from synthetic data and simulated shaking, not clinical
-recordings; vigorous rhythmic activity can cause a (cancellable) pre-alert; only a
-connected phone receives alerts.
+A real wrist recording replayed on a PC gives the same events as the board (Fig.~\ref{fig:main}c): 3.5\,min of
+wearing and handling gave no candidates, and a 48-s forearm shake at 4--6\,Hz gave a pre-alert after 8\,s and one
+alert (94\% confidence) after 18\,s. Limits:
+thresholds come from simulated shaking, not clinical data; vigorous rhythmic activity can cause a (cancellable)
+pre-alert; only a connected phone gets alerts.
 
 \begin{thebibliography}{5}
-\bibitem{cdc} Centers for Disease Control and Prevention, ``Types of seizures,'' May 2024. [Online].
+\bibitem{cdc} CDC, ``Types of seizures,'' May 2024. [Online].
 Available: \url{https://www.cdc.gov/epilepsy/about/types-of-seizures.html}
 \bibitem{ef} Epilepsy Foundation, ``Types of seizures.'' [Online]. Available:
 \url{https://www.epilepsy.com/what-is-epilepsy/seizure-types}
-\bibitem{ilae} International League Against Epilepsy, ``Updated classification of epileptic seizures:
+\bibitem{ilae} ILAE, ``Updated classification of epileptic seizures:
 Position paper.'' [Online]. Available: \url{https://pmc.ncbi.nlm.nih.gov/articles/PMC12169392/}
 \bibitem{aes} American Epilepsy Society, Epilepsy Foundation, and Danny Did Foundation, ``Position statement
 on noninvasive seizure detection/alerting devices.'' [Online]. Available:

@@ -1,9 +1,9 @@
-"""Fig. 1 of the IEEE-style one-pager: (a) the printed case, (b) a real wrist
-recording replayed through the firmware's detector. Times, grayscale-safe,
-one column wide.
+"""Figures for the IEEE-style one-pager:
+  photo_top.jpg, photo_side.jpg  the watch on the wrist, cropped from docs/photos at full resolution
+  fig_recording.pdf              a real wrist recording replayed through the firmware's detector
 
   make -C tools replay
-  python docs/ieee/make_figures.py      (needs matplotlib)
+  python docs/ieee/make_figures.py      (needs matplotlib and Pillow)
 """
 import os
 import re
@@ -13,10 +13,20 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 COLUMN_IN = 3.45  # IEEE two-column width
+
+# Photos: crop around the watch. Box = (left, top, right, bottom) in the 1500x2000 photos.
+PHOTOS = {
+    "photo_top.jpg": ("watch_on_wrist.jpg", (320, 680, 1200, 1300)),
+    "photo_side.jpg": ("watch_side_usb_port.jpg", (440, 840, 1320, 1460)),
+}
+for name, (source, box) in PHOTOS.items():
+    photo = Image.open(os.path.join(ROOT, "docs", "photos", source)).crop(box)
+    photo.save(os.path.join(HERE, name), quality=92)
 
 plt.rcParams.update({
     "font.family": "serif", "font.serif": ["Times New Roman", "Times"], "mathtext.fontset": "stix",
@@ -36,13 +46,7 @@ for line in out.splitlines():
         gyro.append(int(m[2]))
         state.append(m[3])
 
-# Photo of the watch on the wrist, cropped to a square around the case (pixel box in the 1500x2000 photo).
-img = plt.imread(os.path.join(ROOT, "docs", "photos", "watch_on_wrist.jpg"))
-img = img[640:1320, 400:1080]
-
-fig, (left, right) = plt.subplots(1, 2, figsize=(COLUMN_IN, 1.12), gridspec_kw={"width_ratios": [0.8, 2.6]})
-left.imshow(img)
-left.set_axis_off()
+fig, ax = plt.subplots(figsize=(COLUMN_IN, 0.9))
 
 # Shade each run of PRE_ALERT / ALERT windows as one band (window i covers t-1 .. t).
 for name, gray in (("PRE_ALERT", "0.86"), ("ALERT", "0.70")):
@@ -51,25 +55,22 @@ for name, gray in (("PRE_ALERT", "0.86"), ("ALERT", "0.70")):
         if s == name and start is None:
             start = ti - 1
         elif s != name and start is not None:
-            right.axvspan(start, prev, color=gray, lw=0)
+            ax.axvspan(start, prev, color=gray, lw=0)
             start = None
         prev = ti
-right.plot(t, gyro, color="black", lw=0.6)
-right.axhline(100, color="black", lw=0.5, ls=(0, (3, 2)))
-right.text(160, 165, "threshold 100$^\\circ$/s", ha="center", bbox=dict(fc="white", ec="none", pad=0.4))
-right.text(115, 430, "3.5 min of wearing and\nhandling: no candidates", ha="center")
-right.text(229, 640, "pre-alert\n+8 s", ha="right", va="center")
-right.text(298, 640, "alert\n+18 s", ha="left", va="center")
-right.spines[["top", "right"]].set_visible(False)
-right.set_ylabel("gyro RMS ($^\\circ$/s)")
-right.set_xlabel("time (s)", labelpad=0.5)
-right.set_ylim(0, 900)
-right.set_xlim(0, 335)
+ax.plot(t, gyro, color="black", lw=0.6)
+ax.axhline(100, color="black", lw=0.5, ls=(0, (3, 2)))
+ax.text(160, 165, "threshold 100$^\\circ$/s", ha="center", bbox=dict(fc="white", ec="none", pad=0.4))
+ax.text(115, 430, "3.5 min of wearing and\nhandling: no candidates", ha="center")
+ax.text(229, 640, "pre-alert\n+8 s", ha="right", va="center")
+ax.text(298, 640, "alert\n+18 s", ha="left", va="center")
+ax.text(6, 800, "(c)", fontsize=7.5, va="top")
+ax.spines[["top", "right"]].set_visible(False)
+ax.set_ylabel("gyro RMS ($^\\circ$/s)")
+ax.set_xlabel("time (s)", labelpad=0.5)
+ax.set_ylim(0, 900)
+ax.set_xlim(0, 335)
 
-fig.tight_layout(pad=0.15, w_pad=0.4)
-for ax, label in ((left, "(a)"), (right, "(b)")):  # sub-figure labels under each panel
-    box = ax.get_position()
-    fig.text(box.x0 + box.width / 2, 0.0, label, ha="center", va="bottom", fontsize=7.5)
-fig.subplots_adjust(bottom=0.34)
-fig.savefig(os.path.join(HERE, "fig_device_recording.pdf"))
-print(f"fig_device_recording.pdf: {len(t)} windows")
+fig.tight_layout(pad=0.15)
+fig.savefig(os.path.join(HERE, "fig_recording.pdf"))
+print(f"photo_top.jpg, photo_side.jpg, fig_recording.pdf: {len(t)} windows")
